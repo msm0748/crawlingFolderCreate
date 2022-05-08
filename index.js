@@ -37,6 +37,8 @@ let fileName;
     await select1stMenu(page, index, folderName);
   }
 
+  await browser.close();
+
   startCrawling();
 })();
 
@@ -58,17 +60,16 @@ async function select1stMenu(page, index, folderName) {
   for (let index2 = 1; index2 <= $selector2ndMenuLength; index2++) {
     console.log($selector2ndMenuLength, "selector2ndMenuLength");
     // 1차 메뉴 진입시 1번째 인덱스 클래스명이 달라서 2번부터 시작
-    await select2stMenu(page, index2, folderName);
+    await select2ndMenu(page, index2, folderName);
   }
 }
 
-async function select2stMenu(page, index2, folderName) {
+async function select2ndMenu(page, index2, folderName) {
   if (index2 !== 1) {
     await page.click(`#container > div > div.side > nav > div > ul > li:nth-child(${index2}) > a`);
   }
-  console.log(index2, "index2");
   await page.waitForTimeout(3000);
-  contents = await page.$eval("#contents", (el) => el.outerHTML);
+  contents = await page.$eval("#contents", (el) => el.innerHTML);
   const currentUrl = () => {
     return window.location.pathname;
   };
@@ -81,7 +82,43 @@ async function select2stMenu(page, index2, folderName) {
   await page.waitForTimeout(1000);
   fileName = url.parse(fileName, true).query.key; // key값 추출
   await page.waitForTimeout(2000);
-  console.log(urlPath, fileName);
+  if (urlPath !== `/${folderName}/selectBbsNttList.do`) {
+    await createFile(folderName, fileName, contents);
+    await page.waitForTimeout(1000);
+  }
+  let tagCheck =
+    (await page.$("#container > div > div.side > nav > div > ul > li.depth1_item.active > div.depth2")) || "";
+
+  if (tagCheck) {
+    const $selector3rdMenuLength = await page.$$eval(
+      "#container > div > div.side > nav > div > ul > li.depth1_item.active > div > ul > li",
+      (data) => data.length
+    );
+    for (let index3 = 1; index3 <= $selector3rdMenuLength; index3++) {
+      await select3rdMenu(page, index3, folderName);
+    }
+  }
+}
+async function select3rdMenu(page, index3, folderName) {
+  if (index3 !== 1) {
+    await page.click(
+      `#container > div > div.side > nav > div > ul > li.depth1_item.active > div > ul > li:nth-child(${index3}) > a`
+    );
+  }
+  await page.waitForTimeout(3000);
+  contents = await page.$eval("#contents", (el) => el.innerHTML);
+  const currentUrl = () => {
+    return window.location.pathname;
+  };
+  const currentUrlParams = () => {
+    return window.location.href;
+  };
+  await page.waitForTimeout(1000);
+  urlPath = await page.evaluate(currentUrl); // puppeteer에서 javascript 사용하려면 함수 만들어서 리턴하고 page.evaluate() 안에 넣어줘야함
+  fileName = await page.evaluate(currentUrlParams);
+  await page.waitForTimeout(1000);
+  fileName = url.parse(fileName, true).query.key; // key값 추출
+  await page.waitForTimeout(2000);
   if (urlPath !== `/${folderName}/selectBbsNttList.do`) {
     await createFile(folderName, fileName, contents);
     await page.waitForTimeout(1000);
